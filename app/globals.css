@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=Open+Sans:wght@400;500;600;700&display=swap');
+
+:root{
+  --chalk: #14315C;
+  --chalk-light: #1C4F9C;
+  --kraft: #F5F5F3;
+  --kraft-dark: #E8E8E4;
+  --paper: #FFFFFF;
+  --ink: #14202E;
+  --ink-soft: #5C6470;
+  --gold: #C8102E;
+  --gold-dark: #970D22;
+  --border-ink: rgba(20,49,92,0.16);
+}
+
+*{ box-sizing: border-box; }
+
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20,49,92,0.05) 0%, transparent 45%),
+    radial-gradient(circle at 0% 100%, rgba(200,16,46,0.04) 0%, transparent 40%),
+    var(--kraft);
+  color: var(--ink);
+  font-family: 'Open Sans', sans-serif;
+  line-height: 1.5;
+}
+
+h1,h2,h3,h4{ font-family:'Merriweather', serif; margin:0; }
+
+a{ color: inherit; }
+
+.btn{
+  font-family:'Open Sans'; font-weight:700; font-size:14px;
+  padding:10px 18px; border-radius:6px; border:none; cursor:pointer;
+  background: var(--chalk); color:#fff;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.btn:hover{ background: var(--chalk-light); transform: translateY(-1px); box-shadow:0 6px 14px rgba(20,49,92,0.22); }
+.btn.danger{ background:transparent; color:var(--gold); border:1px solid var(--gold); }
+.btn.gold{ background: var(--gold); }
+.btn.gold:hover{ background: var(--gold-dark); }
+
+input, select, textarea{
+  font-family:'Open Sans'; font-size:14px; padding:9px 11px;
+  border:1px solid var(--border-ink); border-radius:6px; background:#fff; color:var(--ink);
+}
+
+.card{
+  background: var(--paper); border:1px solid var(--border-ink); border-left:3px solid var(--chalk);
+  border-radius:6px; padding:16px; margin-bottom:10px;
+}
+
+.pill{
+  font-family:'Open Sans'; font-size:11px; font-weight:700; padding:2px 9px; border-radius:12px;
+  background: var(--kraft-dark); color: var(--ink-soft); display:inline-block;
+}
+.pill.certified{ background: var(--gold); color:#fff; }
+
+.container{ max-width:1000px; margin:0 auto; padding:24px; }
+
+.topbar{
+  background: var(--chalk); color:#fff; padding:14px 24px;
+  display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid var(--gold);
+}
