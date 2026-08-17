@@ -18,10 +18,13 @@ export default function MentorProfile() {
     const { data: viewerProfile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
     setViewer(viewerProfile);
 
+   // Convert "lucas-zhou" from the URL into "lucas zhou"
+    const nameFromUrl = decodeURIComponent(params.id).replace(/-/g, ' ');
+
     const { data: mentorRow } = await supabase
       .from('profiles')
       .select('id, name, grade, period, mentor_profiles(subjects, days, hours_certified, accolades, bio)')
-      .eq('id', params.id)
+      .ilike('name', nameFromUrl) // "ilike" is a cool trick that ignores capitalization!
       .single();
     setMentor(mentorRow);
 
@@ -45,9 +48,29 @@ export default function MentorProfile() {
 
   return (
     <div>
-      <div className="topbar">
+     <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontWeight: 800 }}>METRO MENTOR</div>
-        <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={() => router.push('/student')}>Back</button>
+        
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {/* New "My Profile" Button */}
+          {viewer && (
+            <button 
+              className="btn" 
+              style={{ background: 'var(--gold)', border: 'none', color: '#fff' }} 
+              onClick={() => {
+                // Convert "Lucas Zhou" to "lucas-zhou" for the URL
+                const myUrlName = viewer.name.toLowerCase().replace(/ /g, '-');
+                router.push(`/student/mentor/${myUrlName}`);
+              }}
+            >
+              My Profile
+            </button>
+          )}
+
+          <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={() => router.push('/student')}>
+            Back
+          </button>
+        </div>
       </div>
       <div className="container">
         <div className="card" style={{ borderLeft: '3px solid var(--chalk)', marginBottom: 24 }}>
