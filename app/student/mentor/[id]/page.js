@@ -53,17 +53,14 @@ export default function MentorProfile() {
         
         <div style={{ display: 'flex', gap: '12px' }}>
           {/* New "My Profile" Button */}
-          {viewer && (
+          {/* Edit Profile Button */}
+          {viewer && viewer.role === 'mentor' && (
             <button 
               className="btn" 
-              style={{ background: 'var(--gold)', border: 'none', color: '#fff' }} 
-              onClick={() => {
-                // Convert "Lucas Zhou" to "lucas-zhou" for the URL
-                const myUrlName = viewer.name.toLowerCase().replace(/ /g, '-');
-                router.push(`/student/mentor/${myUrlName}`);
-              }}
+              style={{ background: '#d32f2f', border: 'none', color: '#fff' }} 
+              onClick={() => router.push('/mentor')}
             >
-              My Profile
+              Edit Profile
             </button>
           )}
 
