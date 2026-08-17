@@ -114,6 +114,15 @@ export default function PublicMentorProfile() {
             </div>
           )}
 
+          {/* Back Button */}
+          <button 
+            className="btn" 
+            style={{ background: 'transparent', border: '1px solid #fff' }} 
+            onClick={() => router.back()}
+          >
+            Back
+          </button>
+
           {/* Shows Edit Profile button only if logged-in user is viewing their own profile */}
           {viewer && viewer.id === mentor.id && (
             <button 
