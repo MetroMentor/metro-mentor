@@ -3,122 +3,247 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '../../../../lib/supabaseClient';
 
-export default function MentorProfile() {
+export default function PublicMentorProfile() {
   const router = useRouter();
   const params = useParams();
-  const [viewer, setViewer] = useState(null);
-  const [mentor, setMentor] = useState(null);
-  const [reviews, setReviews] = useState([]);
 
-  useEffect(() => { load(); }, []);
+  const [mentor, setMentor] = useState(null);
+  const [viewer, setViewer] = useState(null);
+  const [allSubjects, setAllSubjects] = useState([]);
+
+  // Edit Profile modal state (matching dashboard exactly)
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [mySubjects, setMySubjects] = useState([]);
+  const [myDays, setMyDays] = useState([]);
+  const [bio, setBio] = useState('');
+  const [accoladeInput, setAccoladeInput] = useState('');
+  const [accolades, setAccolades] = useState([]);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  useEffect(() => {
+    load();
+  }, [params.id]);
 
   async function load() {
     const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) { router.push('/'); return; }
-    const { data: viewerProfile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
-    setViewer(viewerProfile);
+    if (authUser) {
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
+      setViewer(profile);
+    }
 
-   // Convert "lucas-zhou" from the URL into "lucas zhou"
+    const { data: subjectRows } = await supabase.from('subjects').select('name');
+    setAllSubjects((subjectRows || []).map(s => s.name));
+
     const nameFromUrl = decodeURIComponent(params.id).replace(/-/g, ' ');
 
-    const { data: mentorRow } = await supabase
+    const { data: mentorRow, error } = await supabase
       .from('profiles')
       .select('id, name, grade, period, mentor_profiles(subjects, days, hours_certified, accolades, bio)')
-      .ilike('name', nameFromUrl) // "ilike" is a cool trick that ignores capitalization!
+      .ilike('name', nameFromUrl)
+      .eq('role', 'mentor')
+      .limit(1)
       .single();
-    setMentor(mentorRow);
 
-    const { data: reviewRows } = await supabase
-      .from('mentor_ratings')
-      .select('rating, review_text, subject, created_at, student:student_id(name)')
-      .eq('mentor_id', params.id)
-      .order('created_at', { ascending: false });
-    setReviews(reviewRows || []);
+    if (error || !mentorRow) {
+      setMentor('NOT_FOUND');
+    } else {
+      setMentor(mentorRow);
+    }
   }
 
-  async function sendRequest(subject) {
-    await supabase.from('requests').insert({ student_id: viewer.id, mentor_id: mentor.id, subject, status: 'pending' });
-    router.push('/student');
+  function openEditModal() {
+    const mp = mentor?.mentor_profiles || {};
+    setMySubjects(mp.subjects || []);
+    setMyDays(mp.days || []);
+    setBio(mp.bio || '');
+    setAccolades(mp.accolades || []);
+    setIsEditOpen(true);
   }
 
+  function toggleSubject(s) {
+    setMySubjects(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  }
+
+  function toggleDay(d) {
+    setMyDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  }
+
+  function addAccolade() {
+    if (!accoladeInput.trim()) return;
+    setAccolades(prev => [...prev, accoladeInput.trim()]);
+    setAccoladeInput('');
+  }
+
+  function removeAccolade(i) {
+    setAccolades(prev => prev.filter((_, idx) => idx !== i));
+  }
+
+  async function saveProfile() {
+    setSavingProfile(true);
+    await supabase.from('mentor_profiles').update({
+      subjects: mySubjects,
+      days: myDays,
+      bio,
+      accolades,
+    }).eq('id', viewer.id);
+    
+    setSavingProfile(false);
+    setIsEditOpen(false);
+    load(); // Refresh live profile data automatically
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    router.push('/');
+  }
+
+  if (mentor === 'NOT_FOUND') return <div className="container" style={{ marginTop: '2rem' }}>Mentor not found.</div>;
   if (!mentor) return <div className="container">Loading…</div>;
 
-  const mp = mentor.mentor_profiles?.[0] || mentor.mentor_profiles || {};
-  const avgRating = reviews.length ? (reviews.reduce((a, r) => a + r.rating, 0) / reviews.length).toFixed(1) : null;
+  const mp = mentor.mentor_profiles || {};
 
   return (
     <div>
-     <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Topbar */}
+      <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontWeight: 800 }}>METRO MENTOR</div>
-        
-        <div style={{ display: 'flex', gap: '12px' }}>
-          {/* New "My Profile" Button */}
-          {/* Edit Profile Button */}
-          {viewer && viewer.role === 'mentor' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {viewer && (
+            <div>
+              {viewer.name} <span className="pill" style={{ background: 'var(--gold)', color: '#fff', marginLeft: 8 }}>{viewer.role === 'mentor' ? `Mentor · P${viewer.period}` : `Student · P${viewer.period}`}</span>
+            </div>
+          )}
+
+          {/* Shows Edit Profile button only if logged-in user is viewing their own profile */}
+          {viewer && viewer.id === mentor.id && (
             <button 
               className="btn" 
-              style={{ background: '#d32f2f', border: 'none', color: '#fff' }} 
-              onClick={() => router.push('/mentor')}
+              style={{ background: 'var(--gold)', border: 'none', color: '#fff' }} 
+              onClick={openEditModal}
             >
               Edit Profile
             </button>
           )}
 
-          <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={() => router.push('/student')}>
-            Back
-          </button>
+          <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
         </div>
       </div>
-      <div className="container">
-        <div className="card" style={{ borderLeft: '3px solid var(--chalk)', marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <h2 style={{ marginBottom: 4 }}>{mentor.name}</h2>
-              <div style={{ color: 'var(--ink-soft)', fontSize: 14 }}>{mentor.grade} · Period {mentor.period}</div>
-              {mp.bio && <p style={{ marginTop: 12, fontSize: 14, maxWidth: 480 }}>{mp.bio}</p>}
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: 'Merriweather', fontSize: 30, fontWeight: 900, color: 'var(--chalk)' }}>
-                {avgRating ? `★ ${avgRating}` : 'No ratings yet'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{reviews.length} review{reviews.length === 1 ? '' : 's'}</div>
-              <div style={{ fontFamily: 'Merriweather', fontSize: 22, fontWeight: 900, color: 'var(--gold-dark)', marginTop: 10 }}>
-                {(mp.hours_certified || 0).toFixed(1)}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>hours certified</div>
+
+      {/* Main Profile View */}
+      <div className="container" style={{ marginTop: 24 }}>
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>{mentor.name}</h2>
+            <span className="pill" style={{ background: 'var(--gold)', color: '#fff' }}>Period {mentor.period}</span>
+          </div>
+
+          <p style={{ marginTop: 12 }}>{mp.bio || 'No bio provided yet.'}</p>
+
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>Subjects</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(mp.subjects || []).map(s => (
+                <span key={s} className="pill" style={{ background: 'var(--chalk)', color: '#fff' }}>{s}</span>
+              ))}
             </div>
           </div>
 
-          {(mp.accolades || []).length > 0 && (
-            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {mp.accolades.map((a, i) => (
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>Available Days</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(mp.days || []).map(d => (
+                <span key={d} className="pill" style={{ background: 'var(--kraft-dark)', color: 'var(--ink-soft)' }}>{d}</span>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>Accolades</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(mp.accolades || []).map((a, i) => (
                 <span key={i} className="pill" style={{ background: 'var(--gold)', color: '#fff' }}>{a}</span>
               ))}
             </div>
-          )}
+          </div>
+        </div>
+      </div>
 
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 12, color: 'var(--ink-soft)', textTransform: 'uppercase', marginBottom: 6 }}>Good at</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {(mp.subjects || []).map(s => (
-                <button key={s} className="btn" onClick={() => sendRequest(s)}>{s} — Request</button>
+      {/* Edit Profile Modal Popup */}
+      {isEditOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20
+        }}>
+          <div className="card" style={{ maxWidth: 550, width: '100%', maxHeight: '90vh', overflowY: 'auto', background: '#fff', padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ margin: 0 }}>Edit Profile</h2>
+              <button className="btn" style={{ background: 'transparent', border: 'none', fontSize: 18, cursor: 'pointer' }} onClick={() => setIsEditOpen(false)}>✕</button>
+            </div>
+
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>Subjects you tutor</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+              {allSubjects.map(s => (
+                <button 
+                  key={s} 
+                  type="button" 
+                  className="btn" 
+                  style={{ background: mySubjects.includes(s) ? 'var(--chalk)' : 'var(--kraft-dark)', color: mySubjects.includes(s) ? '#fff' : 'var(--ink-soft)' }} 
+                  onClick={() => toggleSubject(s)}
+                >
+                  {s}
+                </button>
               ))}
+            </div>
+
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>Days you're available (during your study hall)</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+              {['Mon','Tue','Wed','Thu','Fri'].map(d => (
+                <button 
+                  key={d} 
+                  type="button" 
+                  className="btn" 
+                  style={{ background: myDays.includes(d) ? 'var(--chalk)' : 'var(--kraft-dark)', color: myDays.includes(d) ? '#fff' : 'var(--ink-soft)' }} 
+                  onClick={() => toggleDay(d)}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>Short bio</label>
+            <textarea 
+              value={bio} 
+              onChange={e => setBio(e.target.value)} 
+              placeholder="A sentence or two about how you tutor, what you're strong in, etc." 
+              style={{ width: '100%', minHeight: 70, marginBottom: 16 }} 
+            />
+
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>Accolades</label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <input 
+                placeholder="e.g. AP Scholar, Math Team Captain" 
+                value={accoladeInput} 
+                onChange={e => setAccoladeInput(e.target.value)} 
+                style={{ flex: 1 }} 
+              />
+              <button type="button" className="btn" onClick={addAccolade}>Add</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+              {accolades.map((a, i) => (
+                <span key={i} className="pill" style={{ background: 'var(--gold)', color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {a} <span style={{ cursor: 'pointer' }} onClick={() => removeAccolade(i)}>✕</span>
+                </span>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" style={{ background: 'transparent', border: '1px solid #ccc' }} onClick={() => setIsEditOpen(false)}>Cancel</button>
+              <button className="btn gold" onClick={saveProfile} disabled={savingProfile}>{savingProfile ? 'Saving…' : 'Save profile'}</button>
             </div>
           </div>
         </div>
-
-        <h2>Reviews</h2>
-        {reviews.length === 0 && <div style={{ color: 'var(--ink-soft)' }}>No reviews yet — be the first to leave one after a session.</div>}
-        {reviews.map((r, i) => (
-          <div className="card" key={i}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontWeight: 700 }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)} <span style={{ fontWeight: 400, fontSize: 12.5, color: 'var(--ink-soft)' }}>— {r.subject}</span></div>
-              <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{r.student?.name}</div>
-            </div>
-            {r.review_text && <p style={{ fontSize: 13.5, marginTop: 6 }}>{r.review_text}</p>}
-          </div>
-        ))}
-      </div>
+      )}
     </div>
   );
 }
