@@ -11,7 +11,7 @@ export default function PublicMentorProfile() {
   const [viewer, setViewer] = useState(null);
   const [allSubjects, setAllSubjects] = useState([]);
 
-  // Edit Profile modal state (matching dashboard exactly)
+  // Edit Profile modal state
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [mySubjects, setMySubjects] = useState([]);
   const [myDays, setMyDays] = useState([]);
@@ -89,7 +89,7 @@ export default function PublicMentorProfile() {
     
     setSavingProfile(false);
     setIsEditOpen(false);
-    load(); // Refresh live profile data automatically
+    load();
   }
 
   async function logout() {
@@ -114,7 +114,6 @@ export default function PublicMentorProfile() {
             </div>
           )}
 
-          {/* Back Button */}
           <button 
             className="btn" 
             style={{ background: 'transparent', border: '1px solid #fff' }} 
@@ -123,17 +122,6 @@ export default function PublicMentorProfile() {
             Back
           </button>
 
-          {/* Shows Edit Profile button only if logged-in user is viewing their own profile */}
-          {viewer && viewer.id === mentor.id && (
-            <button 
-              className="btn" 
-              style={{ background: 'var(--gold)', border: 'none', color: '#fff' }} 
-              onClick={openEditModal}
-            >
-              Edit Profile
-            </button>
-          )}
-
           <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
         </div>
       </div>
@@ -141,9 +129,22 @@ export default function PublicMentorProfile() {
       {/* Main Profile View */}
       <div className="container" style={{ marginTop: 24 }}>
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <h2>{mentor.name}</h2>
-            <span className="pill" style={{ background: 'var(--gold)', color: '#fff' }}>Period {mentor.period}</span>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Prominent Edit Profile Button in Profile Header */}
+              {viewer && viewer.id === mentor.id && (
+                <button 
+                  className="btn" 
+                  style={{ background: 'var(--gold)', border: 'none', color: '#fff', fontWeight: 600 }} 
+                  onClick={openEditModal}
+                >
+                  Edit Profile
+                </button>
+              )}
+              <span className="pill" style={{ background: 'var(--gold)', color: '#fff' }}>Period {mentor.period}</span>
+            </div>
           </div>
 
           <p style={{ marginTop: 12 }}>{mp.bio || 'No bio provided yet.'}</p>
