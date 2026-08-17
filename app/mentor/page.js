@@ -127,11 +127,26 @@ export default function MentorDashboard() {
 
   return (
     <div>
-      <div className="topbar">
+      <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontWeight: 800 }}>METRO MENTOR</div>
-        <div>
-          {user.name} <span className="pill" style={{ background: 'var(--gold)', color: '#fff', marginLeft: 8 }}>Mentor · P{user.period}</span>
-          <button className="btn" style={{ marginLeft: 12, background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div>
+            {user.name} <span className="pill" style={{ background: 'var(--gold)', color: '#fff', marginLeft: 8 }}>Mentor · P{user.period}</span>
+          </div>
+
+          {/* View Live Public Profile Button */}
+          <button 
+            className="btn" 
+            style={{ background: 'var(--gold)', border: 'none', color: '#fff' }} 
+            onClick={() => {
+              const myUrlName = user.name.toLowerCase().replace(/ /g, '-');
+              router.push(`/student/mentor/${myUrlName}`);
+            }}
+          >
+            View Live Profile
+          </button>
+
+          <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
         </div>
       </div>
       <div className="container">
@@ -187,11 +202,18 @@ export default function MentorDashboard() {
           </div>
         )}
 
-        {tab === 'profile' && (
-          <div>
-            <h2>My profile</h2>
-            <div style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 16 }}>
-              This is what students see on your public profile page.
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h2>My profile</h2>
+              <button 
+                className="btn" 
+                style={{ background: 'var(--kraft-dark)', color: 'var(--ink-soft)' }}
+                onClick={() => {
+                  const myUrlName = user.name.toLowerCase().replace(/ /g, '-');
+                  router.push(`/student/mentor/${myUrlName}`);
+                }}
+              >
+                Preview Public Profile ↗
+              </button>
             </div>
 
             <div className="card">
