@@ -141,14 +141,14 @@ export default function MentorDashboard() {
               router.push(`/student/mentor/${myUrlName}`);
             }}
           >
-            View Live Profile
+            My Profile
           </button>
           <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
         </div>
       </div>
       <div className="container">
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          {[['requests', 'Requests'], ['log', 'Log a session'], ['profile', 'My profile']].map(([id, label]) => (
+          {[['requests', 'Requests'], ['log', 'Log a session'], ['profile', 'Edit Profile']].map(([id, label]) => (
             <button key={id} className="btn" style={{ background: tab === id ? 'var(--chalk)' : 'var(--kraft-dark)', color: tab === id ? '#fff' : 'var(--ink-soft)' }} onClick={() => setTab(id)}>{label}</button>
           ))}
         </div>
@@ -202,7 +202,7 @@ export default function MentorDashboard() {
         {tab === 'profile' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <h2>My profile</h2>
+              <h2>Edit Profile</h2>
               <button 
                 className="btn" 
                 style={{ background: 'var(--kraft-dark)', color: 'var(--ink-soft)' }}
