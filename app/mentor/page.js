@@ -133,8 +133,6 @@ export default function MentorDashboard() {
           <div>
             {user.name} <span className="pill" style={{ background: 'var(--gold)', color: '#fff', marginLeft: 8 }}>Mentor · P{user.period}</span>
           </div>
-
-          {/* View Live Public Profile Button */}
           <button 
             className="btn" 
             style={{ background: 'var(--gold)', border: 'none', color: '#fff' }} 
@@ -145,7 +143,6 @@ export default function MentorDashboard() {
           >
             View Live Profile
           </button>
-
           <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
         </div>
       </div>
@@ -202,7 +199,9 @@ export default function MentorDashboard() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        {tab === 'profile' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h2>My profile</h2>
               <button 
                 className="btn" 
@@ -214,6 +213,9 @@ export default function MentorDashboard() {
               >
                 Preview Public Profile ↗
               </button>
+            </div>
+            <div style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 16 }}>
+              This is what students see on your public profile page.
             </div>
 
             <div className="card">
