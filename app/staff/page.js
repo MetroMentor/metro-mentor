@@ -19,24 +19,45 @@ export default function StaffDashboard() {
     if (!profile || profile.role !== 'staff') { router.push('/'); return; }
     setUser(profile);
 
-    const base = supabase.from('sessions').select('id, subject, hours, rating, mentor:mentor_id(name), student:student_id(name)');
-    const { data: pendingRows } = await base.eq('status', 'pending-certification');
+    const { data: pendingRows } = await supabase
+      .from('sessions')
+      .select('id, subject, hours, rating, feedback, mentor_id, student_id, mentor:mentor_id(name), student:student_id(name)')
+      .eq('status', 'pending-certification');
     setPending(pendingRows || []);
-    const { data: disputedRows } = await supabase.from('sessions').select('id, subject, hours, mentor:mentor_id(name), student:student_id(name)').eq('status', 'disputed');
+
+    const { data: disputedRows } = await supabase
+      .from('sessions')
+      .select('id, subject, hours, mentor:mentor_id(name), student:student_id(name)')
+      .eq('status', 'disputed');
     setDisputed(disputedRows || []);
-    const { data: certifiedRows } = await supabase.from('sessions').select('id, subject, hours, mentor:mentor_id(name), student:student_id(name)').eq('status', 'certified').order('created_at', { ascending: false }).limit(20);
+
+    const { data: certifiedRows } = await supabase
+      .from('sessions')
+      .select('id, subject, hours, mentor:mentor_id(name), student:student_id(name)')
+      .eq('status', 'certified')
+      .order('created_at', { ascending: false })
+      .limit(20);
     setCertified(certifiedRows || []);
   }
 
   async function certify(session) {
     await supabase.from('sessions').update({ status: 'certified' }).eq('id', session.id);
-    // bump the mentor's certified hour total and record the rating
+
+    // bump the mentor's certified hour total
     const { data: mp } = await supabase.from('mentor_profiles').select('hours_certified').eq('id', session.mentor_id).single();
     if (mp) {
       await supabase.from('mentor_profiles').update({ hours_certified: (mp.hours_certified || 0) + session.hours }).eq('id', session.mentor_id);
     }
+
+    // save the full review — rating, written text, who left it, what subject
     if (session.rating) {
-      await supabase.from('mentor_ratings').insert({ mentor_id: session.mentor_id, rating: session.rating });
+      await supabase.from('mentor_ratings').insert({
+        mentor_id: session.mentor_id,
+        student_id: session.student_id,
+        subject: session.subject,
+        rating: session.rating,
+        review_text: session.feedback || null,
+      });
     }
     load();
   }
@@ -72,7 +93,10 @@ export default function StaffDashboard() {
         {pending.length === 0 && <div style={{ color: 'var(--ink-soft)', marginBottom: 24 }}>Nothing waiting on certification.</div>}
         {pending.map(s => (
           <div className="card" key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>{s.mentor?.name} → {s.student?.name} — {s.subject}, {s.hours} hrs {s.rating ? `· ${s.rating}★` : ''}</div>
+            <div>
+              <div>{s.mentor?.name} → {s.student?.name} — {s.subject}, {s.hours} hrs {s.rating ? `· ${s.rating}★` : ''}</div>
+              {s.feedback && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>"{s.feedback}"</div>}
+            </div>
             <button className="btn gold" onClick={() => certify(s)}>Certify</button>
           </div>
         ))}

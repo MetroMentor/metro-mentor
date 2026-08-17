@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function StudentDashboard() {
@@ -13,6 +14,7 @@ export default function StudentDashboard() {
   const [toConfirm, setToConfirm] = useState([]);
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [overridePeriod, setOverridePeriod] = useState(false);
+  const [reviewDrafts, setReviewDrafts] = useState({}); // { [sessionId]: { rating, text } }
 
   useEffect(() => { load(); }, []);
 
@@ -28,7 +30,7 @@ export default function StudentDashboard() {
 
     const { data: mentorRows } = await supabase
       .from('profiles')
-      .select('id, name, grade, period, mentor_profiles(subjects, days, hours_certified)')
+      .select('id, name, grade, period, mentor_profiles(subjects, days, hours_certified, accolades)')
       .eq('role', 'mentor');
     setMentors(mentorRows || []);
 
@@ -52,8 +54,15 @@ export default function StudentDashboard() {
     load();
   }
 
-  async function confirmSession(sessionId, rating) {
-    await supabase.from('sessions').update({ status: 'pending-certification', rating }).eq('id', sessionId);
+  function setDraft(sessionId, field, value) {
+    setReviewDrafts(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], [field]: value } }));
+  }
+
+  async function confirmSession(sessionId) {
+    const draft = reviewDrafts[sessionId] || {};
+    const rating = draft.rating || 5;
+    const feedback = draft.text || '';
+    await supabase.from('sessions').update({ status: 'pending-certification', rating, feedback }).eq('id', sessionId);
     load();
   }
 
@@ -115,10 +124,19 @@ export default function StudentDashboard() {
               return (
                 <div className="card" key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontWeight: 700 }}>{m.name} <span style={{ fontWeight: 400, fontSize: 12.5, color: 'var(--ink-soft)' }}>— {m.grade}</span></div>
+                    <div style={{ fontWeight: 700 }}>
+                      <Link href={`/student/mentor/${m.id}`} style={{ color: 'var(--chalk)', textDecoration: 'underline' }}>{m.name}</Link>
+                      <span style={{ fontWeight: 400, fontSize: 12.5, color: 'var(--ink-soft)' }}> — {m.grade}</span>
+                    </div>
                     <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{(mp.subjects || []).join(' · ')} · Period {m.period} · {(mp.days || []).join(', ')}</div>
+                    {(mp.accolades || []).length > 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--gold-dark)', marginTop: 3 }}>{(mp.accolades || []).join(' · ')}</div>
+                    )}
                   </div>
-                  <button className="btn" onClick={() => sendRequest(m.id, (mp.subjects || [])[0] || subjects[0])}>Request</button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Link href={`/student/mentor/${m.id}`} className="btn" style={{ background: 'var(--kraft-dark)', color: 'var(--ink-soft)', textDecoration: 'none' }}>View profile</Link>
+                    <button className="btn" onClick={() => sendRequest(m.id, (mp.subjects || [])[0] || subjects[0])}>Request</button>
+                  </div>
                 </div>
               );
             })}
@@ -142,17 +160,39 @@ export default function StudentDashboard() {
           <div>
             <h2>Confirm sessions</h2>
             {toConfirm.length === 0 && <div style={{ color: 'var(--ink-soft)' }}>Nothing waiting on your confirmation.</div>}
-            {toConfirm.map(s => (
-              <div className="card" key={s.id}>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>{s.mentor?.name} — {s.subject}, {s.hours} hrs</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {[5,4,3,2,1].map(r => (
-                    <button key={r} className="btn gold" onClick={() => confirmSession(s.id, r)}>{r}★ Confirm</button>
-                  ))}
-                  <button className="btn danger" onClick={() => disputeSession(s.id)}>Dispute</button>
+            {toConfirm.map(s => {
+              const draft = reviewDrafts[s.id] || {};
+              return (
+                <div className="card" key={s.id}>
+                  <div style={{ fontWeight: 700, marginBottom: 8 }}>{s.mentor?.name} — {s.subject}, {s.hours} hrs</div>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                    {[1,2,3,4,5].map(r => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setDraft(s.id, 'rating', r)}
+                        className="btn"
+                        style={{
+                          background: (draft.rating || 5) >= r ? 'var(--gold)' : 'var(--kraft-dark)',
+                          color: (draft.rating || 5) >= r ? '#fff' : 'var(--ink-soft)',
+                          padding: '6px 10px',
+                        }}
+                      >★</button>
+                    ))}
+                  </div>
+                  <textarea
+                    placeholder="Write a short review (optional) — what did this session help with?"
+                    value={draft.text || ''}
+                    onChange={e => setDraft(s.id, 'text', e.target.value)}
+                    style={{ width: '100%', minHeight: 60, marginBottom: 10 }}
+                  />
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button className="btn gold" onClick={() => confirmSession(s.id)}>Confirm session</button>
+                    <button className="btn danger" onClick={() => disputeSession(s.id)}>Dispute</button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
