@@ -62,7 +62,8 @@ export default function StudentDashboard() {
     const draft = reviewDrafts[sessionId] || {};
     const rating = draft.rating || 5;
     const feedback = draft.text || '';
-    await supabase.from('sessions').update({ status: 'pending-certification', rating, feedback }).eq('id', sessionId);
+    const student_name = draft.studentName || ''; // <-- Add this
+    await supabase.from('sessions').update({ status: 'pending-certification', rating, feedback, student_name }).eq('id', sessionId);
     
     setSuccessIds(prev => [...prev, sessionId]);
     setTimeout(() => {
@@ -191,16 +192,23 @@ export default function StudentDashboard() {
                           >★</button>
                         ))}
                       </div>
-                      <textarea
-                        placeholder="Write a short review (optional) — what did this session help with?"
-                        value={draft.text || ''}
-                        onChange={e => setDraft(s.id, 'text', e.target.value)}
-                        style={{ width: '100%', minHeight: 60, marginBottom: 10 }}
-                      />
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button className="btn gold" onClick={() => confirmSession(s.id)}>Confirm session</button>
-                        <button className="btn danger" onClick={() => disputeSession(s.id)}>Dispute</button>
-                      </div>
+                      <input
+                      type="text"
+                      placeholder="Your name (optional)"
+                      value={draft.studentName || ''}
+                      onChange={e => setDraft(s.id, 'studentName', e.target.value)}
+                      style={{ width: '100%', marginBottom: 8, padding: '8px' }}
+                    />
+                    <textarea
+                      placeholder="Write a short review (optional) — what did this session help with?"
+                      value={draft.text || ''}
+                      onChange={e => setDraft(s.id, 'text', e.target.value)}
+                      style={{ width: '100%', minHeight: 60, marginBottom: 10 }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button className="btn gold" onClick={() => confirmSession(s.id)}>Confirm session</button>
+                      <button className="btn danger" onClick={() => disputeSession(s.id)}>Dispute</button>
+                    </div>
                     </>
                   )}
                 </div>
