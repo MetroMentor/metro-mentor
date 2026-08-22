@@ -10,6 +10,8 @@ export default function PublicMentorProfile() {
   const [mentor, setMentor] = useState(null);
   const [viewer, setViewer] = useState(null);
   const [allSubjects, setAllSubjects] = useState([]);
+  const [certifiedSessions, setCertifiedSessions] = useState([]); // <-- Add this
+  const [totalHours, setTotalHours] = useState(0); // <-- Add this
 
   // Edit Profile modal state
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -48,6 +50,17 @@ export default function PublicMentorProfile() {
       setMentor('NOT_FOUND');
     } else {
       setMentor(mentorRow);
+
+      // Fetch certified sessions and reviews for this mentor
+      const { data: sessionRows } = await supabase
+        .from('sessions')
+        .select('id, subject, hours, rating, feedback, student:student_id(name)')
+        .eq('mentor_id', mentorRow.id)
+        .eq('status', 'certified');
+
+      setCertifiedSessions(sessionRows || []);
+      const sum = (sessionRows || []).reduce((acc, s) => acc + (s.hours || 0), 0);
+      setTotalHours(sum);
     }
   }
 
@@ -176,6 +189,29 @@ export default function PublicMentorProfile() {
             </div>
           </div>
         </div>
+
+        {/* Certified Hours & Reviews Section */}
+        <div className="card" style={{ marginTop: 20 }}>
+          <h3 style={{ marginBottom: 4 }}>Certified Hours: {totalHours} hrs</h3>
+        </div>
+
+        <h3 style={{ marginTop: 24, marginBottom: 12 }}>Student Reviews & Sessions</h3>
+        {certifiedSessions.length === 0 && (
+          <div style={{ color: 'var(--ink-soft)', marginBottom: 24 }}>No certified sessions yet.</div>
+        )}
+
+        {certifiedSessions.map(s => (
+          <div className="card" key={s.id} style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>
+              {s.subject} — {s.hours} hrs {s.rating ? `· ${s.rating}★` : ''}
+            </div>
+            {s.feedback && (
+              <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>
+                "{s.feedback}"
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Edit Profile Modal Popup */}
