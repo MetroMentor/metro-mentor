@@ -129,7 +129,7 @@ export default function StudentDashboard() {
                 <div className="card" key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontWeight: 700 }}>
-                      <Link href={`/student/mentor/${m.id}`} style={{ color: 'var(--chalk)', textDecoration: 'underline' }}>{m.name}</Link>
+                      <Link href={`/student/mentor/${m.name.toLowerCase().replace(/ /g, '-')}`} style={{ color: 'var(--chalk)', textDecoration: 'underline' }}>{m.name}</Link>
                       <span style={{ fontWeight: 400, fontSize: 12.5, color: 'var(--ink-soft)' }}> — {m.grade}</span>
                     </div>
                     <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{(mp.subjects || []).join(' · ')} · Period {m.period} · {(mp.days || []).join(', ')}</div>
@@ -138,7 +138,7 @@ export default function StudentDashboard() {
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Link href={`/student/mentor/${m.id}`} className="btn" style={{ background: 'var(--kraft-dark)', color: 'var(--ink-soft)', textDecoration: 'none' }}>View profile</Link>
+                    <Link href={`/student/mentor/${m.name.toLowerCase().replace(/ /g, '-')}`} className="btn" style={{ background: 'var(--kraft-dark)', color: 'var(--ink-soft)', textDecoration: 'none' }}>View profile</Link>
                     <button className="btn" onClick={() => sendRequest(m.id, (mp.subjects || [])[0] || subjects[0])}>Request</button>
                   </div>
                 </div>
