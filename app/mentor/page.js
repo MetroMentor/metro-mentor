@@ -16,33 +16,47 @@ export default function MentorDashboard() {
   const [hours, setHours] = useState('1');
   const [recurring, setRecurring] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let isMounted = true;
 
-  async function load() {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) { router.push('/'); return; }
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
-    if (!profile || profile.role !== 'mentor') { router.push('/'); return; }
-    setUser(profile);
+    async function load() {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { if (isMounted) router.push('/'); return; }
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
+      if (!profile || profile.role !== 'mentor') { if (isMounted) router.push('/'); return; }
+      if (isMounted) setUser(profile);
 
-    const { data: subjectRows } = await supabase.from('subjects').select('name');
-    setSubjects((subjectRows || []).map(s => s.name));
-    if (subjectRows && subjectRows.length) setSubject(subjectRows[0].name);
+      const { data: subjectRows } = await supabase.from('subjects').select('name');
+      if (subjectRows && isMounted) {
+        setSubjects(subjectRows.map(s => s.name));
+        setSubject(prev => prev || (subjectRows[0] ? subjectRows[0].name : ''));
+      }
 
-    const { data: reqRows } = await supabase
-      .from('requests')
-      .select('id, subject, status, student:student_id(name)')
-      .eq('mentor_id', authUser.id)
-      .eq('status', 'pending');
-    setRequests(reqRows || []);
+      const { data: reqRows } = await supabase
+        .from('requests')
+        .select('id, subject, status, student:student_id(name)')
+        .eq('mentor_id', authUser.id)
+        .eq('status', 'pending');
+      if (isMounted) setRequests(reqRows || []);
 
-    const { data: sessionRows } = await supabase
-      .from('sessions')
-      .select('id, subject, hours, status, feedback, rating, student:student_id(name)')
-      .eq('mentor_id', authUser.id)
-      .order('created_at', { ascending: false });
-    setMySessions(sessionRows || []);
-  }
+      const { data: sessionRows } = await supabase
+        .from('sessions')
+        .select('id, subject, hours, status, feedback, rating, student:student_id(name)')
+        .eq('mentor_id', authUser.id)
+        .order('created_at', { ascending: false });
+      if (isMounted) setMySessions(sessionRows || []);
+    }
+
+    load();
+
+    // Poll every 3 seconds to keep requests in sync with notifications
+    const interval = setInterval(load, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   async function respond(requestId, status) {
     // 1. Update the request status
