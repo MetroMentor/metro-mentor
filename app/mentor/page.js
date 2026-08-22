@@ -32,12 +32,34 @@ export default function MentorDashboard() {
         setSubject(prev => prev || (subjectRows[0] ? subjectRows[0].name : ''));
       }
 
+      // Fetch pending requests and student profiles separately to ensure reliable data fetching
       const { data: reqRows } = await supabase
         .from('requests')
-        .select('id, subject, status, student:student_id(name)')
+        .select('id, subject, status, student_id')
         .eq('mentor_id', authUser.id)
         .eq('status', 'pending');
-      if (isMounted) setRequests(reqRows || []);
+
+      if (reqRows && reqRows.length > 0 && isMounted) {
+        // Fetch student names for these requests
+        const studentIds = reqRows.map(r => r.student_id);
+        const { data: studentRows } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', studentIds);
+
+        const studentMap = {};
+        if (studentRows) {
+          studentRows.forEach(s => { studentMap[s.id] = s.name; });
+        }
+
+        const formattedRequests = reqRows.map(r => ({
+          ...r,
+          student: { name: studentMap[r.student_id] || 'Unknown Student' }
+        }));
+        setRequests(formattedRequests);
+      } else if (isMounted) {
+        setRequests([]);
+      }
 
       const { data: sessionRows } = await supabase
         .from('sessions')
@@ -49,7 +71,7 @@ export default function MentorDashboard() {
 
     load();
 
-    // Poll every 3 seconds to keep requests in sync with notifications
+    // Poll every 3 seconds
     const interval = setInterval(load, 3000);
 
     return () => {
