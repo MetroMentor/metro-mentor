@@ -1,102 +1,178 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 export default function Topbar() {
   const router = useRouter();
-  const [viewer, setViewer] = useState(null);
+  const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
-    async function loadUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-        setViewer(data);
+    fetchUserDataAndNotifications();
 
-        // Fetch notifications for the user
-        const { data: notifRows } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10);
-        setNotifications(notifRows || []);
+    // Close dropdown when clicking outside
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
       }
     }
-    loadUser();
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  async function toggleNotifications() {
-    setShowNotifications(!showNotifications);
-    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
-    if (unreadIds.length > 0) {
-      await supabase.from('notifications').update({ read: true }).in('id', unreadIds);
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    }
+  async function fetchUserDataAndNotifications() {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
+    if (profile) setUser(profile);
+
+    // Fetch notifications for this user
+    const { data: notifs } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', authUser.id)
+      .order('created_at', { ascending: false });
+
+    if (notifs) setNotifications(notifs);
   }
 
+  async function markAsRead(id) {
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    router.push('/');
+  }
+
+  // Time ago formatter
+  function timeAgo(dateString) {
+    if (!dateString) return '';
+    const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + 'y ago';
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + 'mo ago';
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + 'd ago';
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + 'h ago';
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + 'm ago';
+    return 'Just now';
+  }
+
+  if (!user) return null;
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
   return (
-    <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ fontWeight: 800 }}>METRO MENTOR</div>
+    <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+      <div style={{ fontWeight: 800, cursor: 'pointer' }} onClick={() => router.push(`/${user.role}`)}>
+        METRO MENTOR
+      </div>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
-        
-        {/* Notification Bell */}
-        {viewer && (
-          <div style={{ position: 'relative' }}>
-            <button 
-              onClick={toggleNotifications}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, position: 'relative', padding: 4 }}
-            >
-              🔔
-              {notifications.some(n => !n.read) && (
-                <span style={{
-                  position: 'absolute', top: 0, right: 0,
-                  background: '#ff4d4d', color: '#fff', fontSize: 10,
-                  width: 8, height: 8, borderRadius: '50%'
-                }} />
-              )}
-            </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div>
+          {user.name} <span className="pill" style={{ background: 'var(--gold)', color: '#fff', marginLeft: 8 }}>{user.role.charAt(0).toUpperCase() + user.role.slice(1)} · P{user.period}</span>
+        </div>
 
-            {/* Notification Dropdown Menu */}
-            {showNotifications && (
-              <div style={{
-                position: 'absolute', right: 0, top: 35, width: 300,
-                background: '#fff', color: '#333', borderRadius: 8,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1000, padding: 12,
-                maxHeight: 350, overflowY: 'auto', textAlign: 'left'
-              }}>
-                <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13, borderBottom: '1px solid #eee', paddingBottom: 6 }}>
-                  Notifications
-                </div>
-                {notifications.length === 0 ? (
-                  <div style={{ fontSize: 12, color: '#777', padding: '8px 0' }}>No notifications yet.</div>
-                ) : (
-                  notifications.map(n => (
-                    <div key={n.id} style={{ 
-                      padding: '8px 6px', borderBottom: '1px solid #f5f5f5', 
-                      background: n.read ? '#fff' : '#f9f9ff', borderRadius: 4, marginBottom: 4 
-                    }}>
-                      <div style={{ fontWeight: 600, fontSize: 12 }}>{n.title}</div>
-                      <div style={{ fontSize: 11.5, color: '#555' }}>{n.message}</div>
-                    </div>
-                  ))
-                )}
-              </div>
+        {/* Notification Bell Icon container */}
+        <div style={{ position: 'relative' }} ref={dropdownRef}>
+          <button 
+            onClick={() => setIsOpen(!isOpen)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '18px',
+              position: 'relative',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyText: 'center',
+              color: 'inherit'
+            }}
+            title="Notifications"
+          >
+            🔔
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                width: 9,
+                height: 9,
+                background: '#ff4d4d',
+                borderRadius: '50%',
+                border: '2px solid var(--kraft-dark, #222)'
+              }} />
             )}
-          </div>
-        )}
+          </button>
 
-        {/* My Profile Button */}
-        {viewer && (
+          {/* Dropdown Box */}
+          {isOpen && (
+            <div style={{
+              position: 'absolute',
+              right: 0,
+              marginTop: 10,
+              width: 320,
+              maxHeight: 400,
+              overflowY: 'auto',
+              background: '#1e1e1e',
+              border: '1px solid #333',
+              borderRadius: 8,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              zIndex: 1000,
+              padding: '12px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid #333', paddingBottom: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>Notifications</span>
+                <span style={{ fontSize: 12, color: '#888' }}>{unreadCount} unread</span>
+              </div>
+
+              {notifications.length === 0 ? (
+                <div style={{ padding: '20px 0', textAlign: 'center', color: '#888', fontSize: 13 }}>
+                  No notifications yet.
+                </div>
+              ) : (
+                notifications.map(n => (
+                  <div 
+                    key={n.id} 
+                    onClick={() => markAsRead(n.id)}
+                    style={{
+                      padding: '10px',
+                      borderRadius: 6,
+                      background: n.read ? 'transparent' : 'rgba(212, 175, 55, 0.08)',
+                      marginBottom: 6,
+                      borderLeft: n.read ? '3px solid transparent' : '3px solid var(--gold)',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: '#fff' }}>{n.title}</span>
+                      <span style={{ fontSize: 10, color: '#aaa' }}>{timeAgo(n.created_at)}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#ccc', lineHeight: 1.4 }}>{n.message}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {user.role === 'mentor' && (
           <button 
             className="btn" 
-            style={{ background: '#d32f2f', border: 'none', color: '#fff' }} 
+            style={{ background: 'var(--gold)', border: 'none', color: '#fff' }} 
             onClick={() => {
-              const myUrlName = viewer.name.toLowerCase().replace(/ /g, '-');
+              const myUrlName = user.name.toLowerCase().replace(/ /g, '-');
               router.push(`/student/mentor/${myUrlName}`);
             }}
           >
@@ -104,9 +180,7 @@ export default function Topbar() {
           </button>
         )}
 
-        <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={() => router.back()}>
-          Back
-        </button>
+        <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
       </div>
     </div>
   );
