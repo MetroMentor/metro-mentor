@@ -11,12 +11,14 @@ export default function Topbar() {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchNotifications() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
+      if (!authUser || !isMounted) return;
 
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
-      if (profile) setUser(profile);
+      if (profile && isMounted) setUser(profile);
 
       // Fetch latest notifications
       const { data: notifs } = await supabase
@@ -25,14 +27,16 @@ export default function Topbar() {
         .eq('user_id', authUser.id)
         .order('created_at', { ascending: false });
 
-      if (notifs) setNotifications(notifs);
+      if (notifs && isMounted) {
+        setNotifications(notifs);
+      }
     }
 
-    // Initial fetch on load
+    // Initial fetch
     fetchNotifications();
 
-    // Poll every 4 seconds for new notifications in the background
-    const interval = setInterval(fetchNotifications, 4000);
+    // Poll every 3 seconds
+    const interval = setInterval(fetchNotifications, 3000);
 
     // Close dropdown when clicking outside
     function handleClickOutside(event) {
@@ -43,6 +47,7 @@ export default function Topbar() {
     document.addEventListener('mousedown', handleClickOutside);
     
     return () => {
+      isMounted = false;
       document.removeEventListener('mousedown', handleClickOutside);
       clearInterval(interval);
     };
