@@ -62,7 +62,7 @@ export default function StudentDashboard() {
     const draft = reviewDrafts[sessionId] || {};
     const rating = draft.rating || 5;
     const feedback = draft.text || '';
-    const student_name = draft.studentName || ''; // <-- Add this
+    const student_name = draft.includeName ? user.name : ''; // Updated line
     await supabase.from('sessions').update({ status: 'pending-certification', rating, feedback, student_name }).eq('id', sessionId);
     
     setSuccessIds(prev => [...prev, sessionId]);
@@ -199,6 +199,15 @@ export default function StudentDashboard() {
                       onChange={e => setDraft(s.id, 'studentName', e.target.value)}
                       style={{ width: '100%', marginBottom: 8, padding: '8px' }}
                     />
+                    <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={draft.includeName || false}
+                        onChange={e => setDraft(s.id, 'includeName', e.target.checked)}
+                      />
+                      Include my name ({user.name})
+                    </label>
+
                     <textarea
                       placeholder="Write a short review (optional) — what did this session help with?"
                       value={draft.text || ''}
