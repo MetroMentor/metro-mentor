@@ -19,7 +19,7 @@ export default function StaffDashboard() {
     if (!profile || profile.role !== 'staff') { router.push('/'); return; }
     setUser(profile);
 
-    cnst { data: pendingRows } = await supabase
+    const { data: pendingRows } = await supabase
       .from('sessions')
       .select('id, subject, hours, rating, feedback, mentor_id, student_id, mentor:mentor_id(name), student:student_id(name)')
       .eq('status', 'pending-certification');
