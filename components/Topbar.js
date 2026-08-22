@@ -11,7 +11,43 @@ export default function Topbar() {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    fetchUserDataAndNotifications();
+    let channel = null;
+
+    async function init() {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
+      if (profile) setUser(profile);
+
+      // Fetch initial notifications
+      const { data: notifs } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .order('created_at', { ascending: false });
+
+      if (notifs) setNotifications(notifs);
+
+      // Set up Supabase Realtime listener
+      channel = supabase
+        .channel(`public:notifications:user_id=eq.${authUser.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${authUser.id}`,
+          },
+          (payload) => {
+            setNotifications(prev => [payload.new, ...prev]);
+          }
+        )
+        .subscribe();
+    }
+
+    init();
 
     // Close dropdown when clicking outside
     function handleClickOutside(event) {
@@ -20,25 +56,12 @@ export default function Topbar() {
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
-
-  async function fetchUserDataAndNotifications() {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return;
-
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
-    if (profile) setUser(profile);
-
-    // Fetch notifications for this user
-    const { data: notifs } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', authUser.id)
-      .order('created_at', { ascending: false });
-
-    if (notifs) setNotifications(notifs);
-  }
 
   async function markAsRead(id) {
     await supabase.from('notifications').update({ read: true }).eq('id', id);
@@ -95,7 +118,6 @@ export default function Topbar() {
               padding: '6px',
               display: 'flex',
               alignItems: 'center',
-              justifyText: 'center',
               color: 'inherit'
             }}
             title="Notifications"
