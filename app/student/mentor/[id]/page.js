@@ -10,8 +10,8 @@ export default function PublicMentorProfile() {
   const [mentor, setMentor] = useState(null);
   const [viewer, setViewer] = useState(null);
   const [allSubjects, setAllSubjects] = useState([]);
-  const [certifiedSessions, setCertifiedSessions] = useState([]); // <-- Add this
-  const [totalHours, setTotalHours] = useState(0); // <-- Add this
+  const [certifiedSessions, setCertifiedSessions] = useState([]);
+  const [totalHours, setTotalHours] = useState(0);
 
   // Edit Profile modal state
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -146,7 +146,6 @@ export default function PublicMentorProfile() {
             <h2>{mentor.name}</h2>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {/* Prominent Edit Profile Button in Profile Header */}
               {viewer && viewer.id === mentor.id && (
                 <button 
                   className="btn" 
@@ -217,6 +216,7 @@ export default function PublicMentorProfile() {
             )}
           </div>
         ))}
+      </div>
 
       {/* Edit Profile Modal Popup */}
       {isEditOpen && (
