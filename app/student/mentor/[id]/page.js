@@ -54,7 +54,7 @@ export default function PublicMentorProfile() {
       // Fetch certified sessions and reviews for this mentor
       const { data: sessionRows } = await supabase
         .from('sessions')
-        .select('id, subject, hours, rating, feedback, student:student_id(name)')
+        .select('id, subject, hours, rating, feedback, student_name, student:student_id(name)')
         .eq('mentor_id', mentorRow.id)
         .eq('status', 'certified');
 
@@ -205,6 +205,11 @@ export default function PublicMentorProfile() {
             <div style={{ fontWeight: 700, marginBottom: 4 }}>
               {s.subject} — {s.hours} hrs {s.rating ? `· ${s.rating}★` : ''}
             </div>
+            {s.student_name && (
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--chalk)', marginBottom: 2 }}>
+                — {s.student_name}
+              </div>
+            )}
             {s.feedback && (
               <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>
                 "{s.feedback}"
@@ -212,7 +217,6 @@ export default function PublicMentorProfile() {
             )}
           </div>
         ))}
-      </div>
 
       {/* Edit Profile Modal Popup */}
       {isEditOpen && (
