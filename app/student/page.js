@@ -192,13 +192,6 @@ export default function StudentDashboard() {
                           >★</button>
                         ))}
                       </div>
-                      <input
-                      type="text"
-                      placeholder="Your name (optional)"
-                      value={draft.studentName || ''}
-                      onChange={e => setDraft(s.id, 'studentName', e.target.value)}
-                      style={{ width: '100%', marginBottom: 8, padding: '8px' }}
-                    />
                     <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, cursor: 'pointer' }}>
                       <input
                         type="checkbox"
