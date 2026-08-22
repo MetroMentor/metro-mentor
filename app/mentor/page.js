@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
+import Topbar from '../../components/Topbar';
 
 export default function MentorDashboard() {
   const router = useRouter();
@@ -81,25 +82,7 @@ export default function MentorDashboard() {
 
   return (
     <div>
-      <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontWeight: 800 }}>METRO MENTOR</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div>
-            {user.name} <span className="pill" style={{ background: 'var(--gold)', color: '#fff', marginLeft: 8 }}>Mentor · P{user.period}</span>
-          </div>
-          <button 
-            className="btn" 
-            style={{ background: 'var(--gold)', border: 'none', color: '#fff' }} 
-            onClick={() => {
-              const myUrlName = user.name.toLowerCase().replace(/ /g, '-');
-              router.push(`/student/mentor/${myUrlName}`);
-            }}
-          >
-            My Profile
-          </button>
-          <button className="btn" style={{ background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
-        </div>
-      </div>
+      <Topbar />
       <div className="container">
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
           {[['requests', 'Requests'], ['log', 'Log a session']].map(([id, label]) => (
