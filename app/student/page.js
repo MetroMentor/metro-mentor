@@ -44,7 +44,7 @@ export default function StudentDashboard() {
       .from('sessions')
       .select('id, subject, hours, mentor:mentor_id(name)')
       .eq('student_id', authUser.id)
-      .eq('status', 'awaiting-confirmation');
+      .eq('status', 'pending-certification');
     setToConfirm(sessionRows || []);
   }
 
