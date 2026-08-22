@@ -9,6 +9,7 @@ export default function Topbar() {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const deletedIdsRef = useRef(new Set()); // Tracks locally deleted notifications to prevent poll resurrection
 
   useEffect(() => {
     let isMounted = true;
@@ -28,7 +29,9 @@ export default function Topbar() {
         .order('created_at', { ascending: false });
 
       if (notifs && isMounted) {
-        setNotifications(notifs);
+        // Filter out any IDs that were recently deleted locally
+        const filteredNotifs = notifs.filter(n => !deletedIdsRef.current.has(n.id));
+        setNotifications(filteredNotifs);
       }
     }
 
@@ -54,21 +57,25 @@ export default function Topbar() {
   }, []);
 
   async function markAsRead(id) {
-    await supabase.from('notifications').update({ read: true }).eq('id', id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
   }
 
   async function deleteNotification(id, e) {
     e.stopPropagation(); // Prevent triggering markAsRead
-    await supabase.from('notifications').delete().eq('id', id);
+    deletedIdsRef.current.add(id); // Block poll from bringing it back
     setNotifications(prev => prev.filter(n => n.id !== id));
+    await supabase.from('notifications').delete().eq('id', id);
   }
 
   async function clearAllRead() {
-    const readIds = notifications.filter(n => n.read).map(n => n.id);
+    const readNotifications = notifications.filter(n => n.read);
+    const readIds = readNotifications.map(n => n.id);
     if (readIds.length === 0) return;
-    await supabase.from('notifications').delete().in('id', readIds);
+
+    readIds.forEach(id => deletedIdsRef.current.add(id)); // Block poll from bringing them back
     setNotifications(prev => prev.filter(n => !n.read));
+    await supabase.from('notifications').delete().in('id', readIds);
   }
 
   async function logout() {
