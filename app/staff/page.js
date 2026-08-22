@@ -23,8 +23,7 @@ export default function StaffDashboard() {
       .from('sessions')
       .select('id, subject, hours, rating, feedback, mentor_id, student_id, mentor:mentor_id(name), student:student_id(name)')
       .eq('status', 'pending-certification');
-    setPending(pendingRows || []);
-
+    
     const { data: disputedRows } = await supabase
       .from('sessions')
       .select('id, subject, hours, mentor:mentor_id(name), student:student_id(name)')
