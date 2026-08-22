@@ -47,6 +47,21 @@ export default function Home() {
       return;
     }
     setLoading(true);
+
+    // --- NEW CODE: Check if the name is already taken ---
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('name')
+      .ilike('name', name) 
+      .maybeSingle();
+
+    if (existingUser) {
+      setError('This name is already taken! Please add a middle initial or a number.');
+      setLoading(false);
+      return; // Stops the sign-up process here
+    }
+    // ----------------------------------------------------
+
     const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
     if (signUpError) {
       setError(signUpError.message);
