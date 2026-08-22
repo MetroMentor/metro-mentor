@@ -15,7 +15,7 @@ export default function StudentDashboard() {
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [overridePeriod, setOverridePeriod] = useState(false);
   const [reviewDrafts, setReviewDrafts] = useState({}); // { [sessionId]: { rating, text } }
-
+  const [successIds, setSuccessIds] = useState([]);
   useEffect(() => { load(); }, []);
 
   async function load() {
@@ -63,7 +63,11 @@ export default function StudentDashboard() {
     const rating = draft.rating || 5;
     const feedback = draft.text || '';
     await supabase.from('sessions').update({ status: 'pending-certification', rating, feedback }).eq('id', sessionId);
-    load();
+    
+    setSuccessIds(prev => [...prev, sessionId]);
+    setTimeout(() => {
+      load();
+    }, 1200);
   }
 
   async function disputeSession(sessionId) {
@@ -162,34 +166,43 @@ export default function StudentDashboard() {
             {toConfirm.length === 0 && <div style={{ color: 'var(--ink-soft)' }}>Nothing waiting on your confirmation.</div>}
             {toConfirm.map(s => {
               const draft = reviewDrafts[s.id] || {};
+              const isSuccess = successIds.includes(s.id);
               return (
                 <div className="card" key={s.id}>
                   <div style={{ fontWeight: 700, marginBottom: 8 }}>{s.mentor?.name} — {s.subject}, {s.hours} hrs</div>
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                    {[1,2,3,4,5].map(r => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setDraft(s.id, 'rating', r)}
-                        className="btn"
-                        style={{
-                          background: (draft.rating || 5) >= r ? 'var(--gold)' : 'var(--kraft-dark)',
-                          color: (draft.rating || 5) >= r ? '#fff' : 'var(--ink-soft)',
-                          padding: '6px 10px',
-                        }}
-                      >★</button>
-                    ))}
-                  </div>
-                  <textarea
-                    placeholder="Write a short review (optional) — what did this session help with?"
-                    value={draft.text || ''}
-                    onChange={e => setDraft(s.id, 'text', e.target.value)}
-                    style={{ width: '100%', minHeight: 60, marginBottom: 10 }}
-                  />
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button className="btn gold" onClick={() => confirmSession(s.id)}>Confirm session</button>
-                    <button className="btn danger" onClick={() => disputeSession(s.id)}>Dispute</button>
-                  </div>
+                  {isSuccess ? (
+                    <div style={{ color: 'var(--gold)', fontWeight: 600, padding: '10px 0' }}>
+                      ✓ Review sent! Forwarded to staff for certification.
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                        {[1,2,3,4,5].map(r => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setDraft(s.id, 'rating', r)}
+                            className="btn"
+                            style={{
+                              background: (draft.rating || 5) >= r ? 'var(--gold)' : 'var(--kraft-dark)',
+                              color: (draft.rating || 5) >= r ? '#fff' : 'var(--ink-soft)',
+                              padding: '6px 10px',
+                            }}
+                          >★</button>
+                        ))}
+                      </div>
+                      <textarea
+                        placeholder="Write a short review (optional) — what did this session help with?"
+                        value={draft.text || ''}
+                        onChange={e => setDraft(s.id, 'text', e.target.value)}
+                        style={{ width: '100%', minHeight: 60, marginBottom: 10 }}
+                      />
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button className="btn gold" onClick={() => confirmSession(s.id)}>Confirm session</button>
+                        <button className="btn danger" onClick={() => disputeSession(s.id)}>Dispute</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
