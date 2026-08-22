@@ -74,6 +74,21 @@ export default function Home() {
     router.push('/' + role);
   }
 
+  // Sends the person to Microsoft to log in with their school account.
+  // After they come back, our app checks whether they already have a
+  // profile row — if not, they land on /complete-profile to pick a role.
+  async function handleMicrosoftLogin() {
+    setError('');
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: {
+        scopes: 'email',
+        redirectTo: `${window.location.origin}/complete-profile`,
+      },
+    });
+    if (oauthError) setError(oauthError.message);
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div className="card" style={{ maxWidth: 380, width: '100%', borderTop: '5px solid var(--chalk)', boxShadow: '0 20px 45px rgba(20,49,92,0.14)' }}>
@@ -81,6 +96,18 @@ export default function Home() {
           <div style={{ fontFamily: 'Merriweather', fontWeight: 900, fontSize: 24, color: 'var(--chalk)' }}>METRO MENTOR</div>
           <div style={{ fontSize: 12, color: 'var(--gold-dark)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Metro High School</div>
         </div>
+
+        <button
+          type="button"
+          onClick={handleMicrosoftLogin}
+          className="btn"
+          style={{ width: '100%', background: '#fff', color: 'var(--ink)', border: '1px solid var(--border-ink)', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+        >
+          <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+          Sign in with Microsoft
+        </button>
+
+        <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--ink-soft)', margin: '4px 0 16px' }}>— or use email/password —</div>
 
         <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
           <button className="btn" style={{ flex: 1, background: mode === 'login' ? 'var(--chalk)' : 'var(--kraft-dark)', color: mode === 'login' ? '#fff' : 'var(--ink-soft)' }} onClick={() => setMode('login')}>Log in</button>
