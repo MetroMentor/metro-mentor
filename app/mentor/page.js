@@ -45,7 +45,23 @@ export default function MentorDashboard() {
   }
 
   async function respond(requestId, status) {
-    await supabase.from('requests').update({ status }).eq('id', requestId);
+    // 1. Update the request status
+    const { data: updatedReq } = await supabase
+      .from('requests')
+      .update({ status })
+      .eq('id', requestId)
+      .select('student_id, subject')
+      .single();
+
+    // 2. Notify the student about the acceptance/decline
+    if (updatedReq) {
+      await supabase.from('notifications').insert({
+        user_id: updatedReq.student_id,
+        title: `Request ${status === 'accepted' ? 'Accepted! 🎉' : 'Declined'}`,
+        message: `${user.name} has ${status} your mentoring request for ${updatedReq.subject}.`
+      });
+    }
+
     load();
   }
 
