@@ -36,12 +36,16 @@ export default function Home() {
       }
       return;
     }
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', data.user.id)
-      .single();
+      .maybeSingle();
     setLoading(false);
+    if (profileError) {
+      setError('Something went wrong loading your account. Please try logging in again.');
+      return;
+    }
     router.push('/' + (profile ? profile.role : 'complete-profile'));
   }
 

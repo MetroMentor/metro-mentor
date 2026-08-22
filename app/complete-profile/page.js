@@ -25,15 +25,12 @@ export default function CompleteProfile() {
       if (!user) { router.push('/'); return; }
 
       // If this person already has a profile, skip straight to their dashboard.
-      const { data: existing } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      const { data: existing } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
       if (existing) { router.push('/' + existing.role); return; }
 
       setAuthUser(user);
-      // Pre-fill from whatever we already know:
-      // - Email/password signups stored these as metadata at signup time.
-      // - Microsoft sign-ins only give us a name/email, so the rest defaults.
       const meta = user.user_metadata || {};
-      setName(meta.name || meta.full_name || meta.name_ || '');
+      setName(meta.name || meta.full_name || '');
       if (meta.role) setRole(meta.role);
       if (meta.period) setPeriod(String(meta.period));
       if (meta.parent_email) setParentEmail(meta.parent_email);
@@ -51,7 +48,12 @@ export default function CompleteProfile() {
       return;
     }
     setLoading(true);
-    const { error: profileError } = await supabase.from('profiles').insert({
+
+    // Use upsert instead of insert: if a profile row for this account
+    // somehow already exists (e.g. a double-click, or a slow network
+    // check above), this quietly keeps going instead of crashing with
+    // a "duplicate key" error.
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: authUser.id,
       name,
       role,
@@ -66,7 +68,7 @@ export default function CompleteProfile() {
       return;
     }
     if (role === 'mentor') {
-      await supabase.from('mentor_profiles').insert({ id: authUser.id, subjects: [], days: [] });
+      await supabase.from('mentor_profiles').upsert({ id: authUser.id, subjects: [], days: [] });
     }
     setLoading(false);
     router.push('/' + role);
