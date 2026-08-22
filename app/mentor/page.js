@@ -66,7 +66,7 @@ export default function MentorDashboard() {
       subject,
       hours: parseFloat(hours),
       recurring,
-      status: 'awaiting-confirmation',
+      status: 'pending-certification', // <-- Change this line!
     });
     setStudentName('');
     load();
