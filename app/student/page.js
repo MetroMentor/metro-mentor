@@ -192,13 +192,13 @@ export default function StudentDashboard() {
                           >★</button>
                         ))}
                       </div>
-                    <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, cursor: 'pointer' }}>
+                    <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, cursor: 'pointer', fontWeight: 500 }}>
                       <input
                         type="checkbox"
                         checked={draft.includeName || false}
                         onChange={e => setDraft(s.id, 'includeName', e.target.checked)}
                       />
-                      Include my name ({user.name})
+                      Include my name (<span style={{ fontWeight: 700, textDecoration: 'underline' }}>{user.name}</span>) publicly on this mentor's profile
                     </label>
 
                     <textarea
