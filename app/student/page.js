@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabaseClient';
-import Topbar from '../components/topbar'; // Adjust path if components folder is in a different relative location
+import Topbar from '../../components/Topbar';
 
 export default function StudentDashboard() {
   const router = useRouter();
