@@ -51,6 +51,13 @@ export default function StudentDashboard() {
 
   async function sendRequest(mentorId, subject) {
     await supabase.from('requests').insert({ student_id: user.id, mentor_id: mentorId, subject, status: 'pending' });
+    
+    await supabase.from('notifications').insert({
+      user_id: mentorId,
+      title: 'New Session Request',
+      message: `${user.name} requested a mentoring session for ${subject}.`
+    });
+
     setTab('myrequests');
     load();
   }
@@ -66,12 +73,20 @@ export default function StudentDashboard() {
     const student_name = draft.includeName ? user.name : ''; // Updated line
     await supabase.from('sessions').update({ status: 'pending-certification', rating, feedback, student_name }).eq('id', sessionId);
     
+    const targetSession = toConfirm.find(s => s.id === sessionId);
+    if (targetSession && targetSession.mentor_id) {
+      await supabase.from('notifications').insert({
+        user_id: targetSession.mentor_id,
+        title: 'Session Confirmed!',
+        message: `${user.name} confirmed your session and left a review.`
+      });
+    }
+
     setSuccessIds(prev => [...prev, sessionId]);
     setTimeout(() => {
       load();
     }, 1200);
   }
-
   async function disputeSession(sessionId) {
     await supabase.from('sessions').update({ status: 'disputed' }).eq('id', sessionId);
     load();
