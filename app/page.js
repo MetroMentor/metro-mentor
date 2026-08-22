@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 
 export default function Home() {
   const router = useRouter();
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'checkEmail'
   const [role, setRole] = useState('student');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +16,7 @@ export default function Home() {
   const [conduct, setConduct] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
 
   const isStudentOrMentor = role === 'student' || role === 'mentor';
   const isStudent = role === 'student';
@@ -26,8 +27,13 @@ export default function Home() {
     setLoading(true);
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
-      setError(signInError.message);
       setLoading(false);
+      // Supabase's message for this case is usually "Email not confirmed"
+      if (signInError.message.toLowerCase().includes('confirm')) {
+        setError('Your email isn\'t verified yet. Check your inbox for the verification link, or resend it below.');
+      } else {
+        setError(signInError.message);
+      }
       return;
     }
     const { data: profile } = await supabase
@@ -36,7 +42,7 @@ export default function Home() {
       .eq('id', data.user.id)
       .single();
     setLoading(false);
-    if (profile) router.push('/' + profile.role);
+    router.push('/' + (profile ? profile.role : 'complete-profile'));
   }
 
   async function handleSignup(e) {
@@ -47,51 +53,56 @@ export default function Home() {
       return;
     }
     setLoading(true);
-
-    // --- NEW CODE: Check if the name is already taken ---
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('name')
-      .ilike('name', name) 
-      .maybeSingle();
-
-    if (existingUser) {
-      setError('This name is already taken! Please add a middle initial or a number.');
-      setLoading(false);
-      return; // Stops the sign-up process here
-    }
-    // ----------------------------------------------------
-
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+    // We store the signup details as metadata on the auth account itself,
+    // since the person isn't "logged in" yet until they verify their email
+    // (so we can't write to the profiles table for them just yet).
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/complete-profile`,
+        data: {
+          name,
+          role,
+          period: isStudentOrMentor ? parseInt(period) : null,
+          parent_email: isStudent ? parentEmail : null,
+          consent_given: isStudent ? consent : false,
+          conduct_agreed: isStudent ? conduct : false,
+        },
+      },
+    });
+    setLoading(false);
     if (signUpError) {
       setError(signUpError.message);
-      setLoading(false);
       return;
     }
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      name,
-      role,
-      period: isStudentOrMentor ? parseInt(period) : null,
-      parent_email: isStudent ? parentEmail : null,
-      consent_given: isStudent ? consent : false,
-      conduct_agreed: isStudent ? conduct : false,
-    });
-    if (profileError) {
-      setError(profileError.message);
-      setLoading(false);
-      return;
-    }
-    if (role === 'mentor') {
-      await supabase.from('mentor_profiles').insert({ id: data.user.id, subjects: [], days: [] });
-    }
-    setLoading(false);
-    router.push('/' + role);
+    setMode('checkEmail');
+  }
+
+  async function resendVerification() {
+    setResendMsg('');
+    const { error: resendError } = await supabase.auth.resend({ type: 'signup', email });
+    setResendMsg(resendError ? resendError.message : 'Sent! Check your inbox again.');
+  }
+
+  // ===== "Check your email" screen =====
+  if (mode === 'checkEmail') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div className="card" style={{ maxWidth: 380, width: '100%', borderTop: '5px solid var(--chalk)', boxShadow: '0 20px 45px rgba(20,49,92,0.14)', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'Merriweather', fontWeight: 900, fontSize: 22, color: 'var(--chalk)', marginBottom: 10 }}>Check your email</div>
+          <p style={{ fontSize: 14, color: 'var(--ink-soft)', marginBottom: 16 }}>
+            We sent a verification link to <strong>{email}</strong>. Click it to activate your account, then come back here and log in.
+          </p>
+          <button className="btn" style={{ width: '100%', marginBottom: 10 }} onClick={resendVerification}>Resend verification email</button>
+          {resendMsg && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 10 }}>{resendMsg}</div>}
+          <button className="btn gold" style={{ width: '100%' }} onClick={() => setMode('login')}>Back to login</button>
+        </div>
+      </div>
+    );
   }
 
   // Sends the person to Microsoft to log in with their school account.
-  // After they come back, our app checks whether they already have a
-  // profile row — if not, they land on /complete-profile to pick a role.
   async function handleMicrosoftLogin() {
     setError('');
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -174,7 +185,15 @@ export default function Home() {
           <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Password</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} style={{ width: '100%', marginBottom: 12 }} />
 
-          {error && <div style={{ color: 'var(--gold-dark)', fontSize: 13, marginBottom: 12 }}>{error}</div>}
+          {error && (
+            <div style={{ color: 'var(--gold-dark)', fontSize: 13, marginBottom: 12 }}>
+              {error}
+              {error.toLowerCase().includes('verified') && (
+                <div><button type="button" onClick={resendVerification} style={{ background: 'none', border: 'none', color: 'var(--chalk)', textDecoration: 'underline', cursor: 'pointer', padding: 0, marginTop: 6 }}>Resend verification email</button></div>
+              )}
+              {resendMsg && <div style={{ marginTop: 4 }}>{resendMsg}</div>}
+            </div>
+          )}
 
           <button className="btn gold" type="submit" disabled={loading} style={{ width: '100%' }}>
             {loading ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}

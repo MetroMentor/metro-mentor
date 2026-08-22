@@ -24,13 +24,21 @@ export default function CompleteProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/'); return; }
 
-      // If this person already has a profile (not their first time),
-      // skip straight to their dashboard instead of asking again.
+      // If this person already has a profile, skip straight to their dashboard.
       const { data: existing } = await supabase.from('profiles').select('role').eq('id', user.id).single();
       if (existing) { router.push('/' + existing.role); return; }
 
       setAuthUser(user);
-      setName(user.user_metadata?.full_name || user.user_metadata?.name || '');
+      // Pre-fill from whatever we already know:
+      // - Email/password signups stored these as metadata at signup time.
+      // - Microsoft sign-ins only give us a name/email, so the rest defaults.
+      const meta = user.user_metadata || {};
+      setName(meta.name || meta.full_name || meta.name_ || '');
+      if (meta.role) setRole(meta.role);
+      if (meta.period) setPeriod(String(meta.period));
+      if (meta.parent_email) setParentEmail(meta.parent_email);
+      if (meta.consent_given) setConsent(meta.consent_given);
+      if (meta.conduct_agreed) setConduct(meta.conduct_agreed);
       setChecking(false);
     })();
   }, []);
@@ -70,8 +78,8 @@ export default function CompleteProfile() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div className="card" style={{ maxWidth: 380, width: '100%', borderTop: '5px solid var(--chalk)', boxShadow: '0 20px 45px rgba(20,49,92,0.14)' }}>
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <div style={{ fontFamily: 'Merriweather', fontWeight: 900, fontSize: 20, color: 'var(--chalk)' }}>Almost there</div>
-          <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>Signed in with Microsoft as {authUser?.email}. Just a couple more details.</div>
+          <div style={{ fontFamily: 'Merriweather', fontWeight: 900, fontSize: 20, color: 'var(--chalk)' }}>You're verified!</div>
+          <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>Signed in as {authUser?.email}. Just confirm these details to finish.</div>
         </div>
 
         <form onSubmit={finishSignup}>
