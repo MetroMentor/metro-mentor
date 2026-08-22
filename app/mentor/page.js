@@ -145,9 +145,6 @@ export default function MentorDashboard() {
               </label>
               <button className="btn" type="submit">Log session</button>
             </form>
-            <div style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 12 }}>
-              The student confirms this — with a rating and optional written review — before staff can certify the hours.
-            </div>
             {mySessions.map(s => (
               <div className="card" key={s.id}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
