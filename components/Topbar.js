@@ -11,16 +11,14 @@ export default function Topbar() {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    let channel = null;
-
-    async function init() {
+    async function fetchNotifications() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
 
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
       if (profile) setUser(profile);
 
-      // Fetch initial notifications
+      // Fetch latest notifications
       const { data: notifs } = await supabase
         .from('notifications')
         .select('*')
@@ -28,27 +26,13 @@ export default function Topbar() {
         .order('created_at', { ascending: false });
 
       if (notifs) setNotifications(notifs);
-
-      // Set up a broad realtime listener that filters client-side
-      channel = supabase
-        .channel('public:notifications')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-          },
-          (payload) => {
-            if (payload.new && payload.new.user_id === authUser.id) {
-              setNotifications(prev => [payload.new, ...prev]);
-            }
-          }
-        )
-        .subscribe();
     }
 
-    init();
+    // Initial fetch on load
+    fetchNotifications();
+
+    // Poll every 4 seconds for new notifications in the background
+    const interval = setInterval(fetchNotifications, 4000);
 
     // Close dropdown when clicking outside
     function handleClickOutside(event) {
@@ -60,7 +44,7 @@ export default function Topbar() {
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      if (channel) supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, []);
 
