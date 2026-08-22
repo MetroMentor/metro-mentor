@@ -58,6 +58,19 @@ export default function Topbar() {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   }
 
+  async function deleteNotification(id, e) {
+    e.stopPropagation(); // Prevent triggering markAsRead
+    await supabase.from('notifications').delete().eq('id', id);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }
+
+  async function clearAllRead() {
+    const readIds = notifications.filter(n => n.read).map(n => n.id);
+    if (readIds.length === 0) return;
+    await supabase.from('notifications').delete().in('id', readIds);
+    setNotifications(prev => prev.filter(n => !n.read));
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     router.push('/');
@@ -145,7 +158,17 @@ export default function Topbar() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid #333', paddingBottom: 8 }}>
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>Notifications</span>
-                <span style={{ fontSize: 12, color: '#888' }}>{unreadCount} unread</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 12, color: '#888' }}>{unreadCount} unread</span>
+                  {notifications.some(n => n.read) && (
+                    <button 
+                      onClick={clearAllRead}
+                      style={{ background: 'transparent', border: 'none', color: '#ff4d4d', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                    >
+                      Clear read
+                    </button>
+                  )}
+                </div>
               </div>
 
               {notifications.length === 0 ? (
@@ -164,12 +187,22 @@ export default function Topbar() {
                       marginBottom: 6,
                       borderLeft: n.read ? '3px solid transparent' : '3px solid var(--gold)',
                       cursor: 'pointer',
-                      transition: 'background 0.2s'
+                      transition: 'background 0.2s',
+                      position: 'relative'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                       <span style={{ fontWeight: 600, fontSize: 13, color: '#fff' }}>{n.title}</span>
-                      <span style={{ fontSize: 10, color: '#aaa' }}>{timeAgo(n.created_at)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 10, color: '#aaa' }}>{timeAgo(n.created_at)}</span>
+                        <button 
+                          onClick={(e) => deleteNotification(n.id, e)}
+                          style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: '12px', padding: '0 2px' }}
+                          title="Delete notification"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                     <div style={{ fontSize: 12, color: '#ccc', lineHeight: 1.4 }}>{n.message}</div>
                   </div>
