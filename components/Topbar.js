@@ -29,19 +29,20 @@ export default function Topbar() {
 
       if (notifs) setNotifications(notifs);
 
-      // Set up Supabase Realtime listener
+      // Set up a broad realtime listener that filters client-side
       channel = supabase
-        .channel(`public:notifications:user_id=eq.${authUser.id}`)
+        .channel('public:notifications')
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
             table: 'notifications',
-            filter: `user_id=eq.${authUser.id}`,
           },
           (payload) => {
-            setNotifications(prev => [payload.new, ...prev]);
+            if (payload.new && payload.new.user_id === authUser.id) {
+              setNotifications(prev => [payload.new, ...prev]);
+            }
           }
         )
         .subscribe();
