@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabaseClient';
+import Topbar from '../components/topbar'; // Adjust path if components folder is in a different relative location
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -92,13 +93,7 @@ export default function StudentDashboard() {
 
   return (
     <div>
-      <div className="topbar">
-        <div style={{ fontWeight: 800 }}>METRO MENTOR</div>
-        <div>
-          {user.name} <span className="pill" style={{ background: 'var(--gold)', color: '#fff', marginLeft: 8 }}>Student · P{user.period}</span>
-          <button className="btn" style={{ marginLeft: 12, background: 'transparent', border: '1px solid #fff' }} onClick={logout}>Log out</button>
-        </div>
-      </div>
+      <Topbar />
       <div className="container">
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {[
